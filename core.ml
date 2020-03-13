@@ -24,7 +24,8 @@ let rec isval ctx t = match t with
   | TmRecord(_,fields) -> List.for_all (fun (l,ti) -> isval ctx ti) fields
   | _ -> false
 
-let rec eval1 ctx t = match t with
+(* one-step evaluation relation *)
+let rec eval1 ctx t : term = match t with
     TmIf(_,TmTrue(_),t2,t3) ->
       t2
   | TmIf(_,TmFalse(_),t2,t3) ->
@@ -117,7 +118,7 @@ let rec eval1 ctx t = match t with
   | _ -> 
       raise NoRuleApplies
 
-let rec eval ctx t =
+let rec eval ctx t : term =
   try let t' = eval1 ctx t
       in eval ctx t'
   with NoRuleApplies -> t
@@ -138,7 +139,7 @@ let gettyabb ctx i =
     TyAbbBind(tyT) -> tyT
   | _ -> raise NoRuleApplies
 
-let rec computety ctx tyT = match tyT with
+let rec computety ctx tyT : ty = match tyT with
     TyVar(i,_) when istyabb ctx i -> gettyabb ctx i
   | _ -> raise NoRuleApplies
 
@@ -184,7 +185,7 @@ let rec tyeqv ctx tyS tyT =
 
 (* ------------------------   TYPING  ------------------------ *)
 
-let rec typeof ctx t =
+let rec typeof ctx t : ty =
   match t with
     TmInert(fi,tyT) ->
       tyT

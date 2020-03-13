@@ -15,7 +15,7 @@ let searchpath = ref [""]
 
 let argDefs = [
   "-I",
-      Arg.String (fun f -> searchpath := f::!searchpath),
+      Arg.String (fun (f: string) -> searchpath := f::!searchpath),
       "Append a directory to the search path"]
 
 let parseArgs () =
@@ -72,8 +72,8 @@ let prbindingty ctx b = match b with
   | TyAbbBind(tyT) -> pr ":: *"
 
 let rec process_command ctx cmd = match cmd with
-  | Eval(fi,t) -> 
-      let tyT = typeof ctx t in
+  | Eval((fi: info), (t: term)) -> 
+      let (tyT: ty) = typeof ctx t in
       let t' = eval ctx t in
       printtm_ATerm true ctx t'; 
       print_break 1 2;
@@ -81,7 +81,7 @@ let rec process_command ctx cmd = match cmd with
       printty ctx tyT;
       force_newline();
       ctx
-  | Bind(fi,x,bind) -> 
+  | Bind(fi, (x: string), bind) -> 
       let bind = checkbinding fi ctx bind in
       let bind' = evalbinding ctx bind in
       pr x; pr " "; prbindingty ctx bind'; force_newline();
@@ -90,7 +90,7 @@ let rec process_command ctx cmd = match cmd with
 let process_file f ctx =
   alreadyImported := f :: !alreadyImported;
   let cmds,_ = parseFile f ctx in
-  let g ctx c =  
+  let g ctx (c: command) =  
     open_hvbox 0;
     let results = process_command ctx c in
     print_flush();

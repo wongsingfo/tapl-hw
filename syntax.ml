@@ -8,6 +8,7 @@ open Support.Pervasive
 type ty =
     TyVar of int * int
   | TyId of string
+  (* function: ty -> ty *)
   | TyArr of ty * ty
   | TyUnit
   | TyRecord of (string * ty) list
@@ -23,7 +24,11 @@ type term =
   | TmIf of info * term * term * term
   | TmCase of info * term * (string * (string * term)) list
   | TmTag of info * string * term * ty
+  (* The second `int` is the total length of the context in which the 
+  variable occurs. It is only for consistency check. *)
   | TmVar of info * int * int
+  (* The `string` is only used as a hint for the name of the bound variable 
+  when printing a term *)
   | TmAbs of info * string * ty * term
   | TmApp of info * term * term
   | TmLet of info * string * term * term
@@ -40,6 +45,7 @@ type term =
   | TmPred of info * term
   | TmIsZero of info * term
   | TmInert of info * ty
+  (* pattern matching *)
   | TmPLet of info * string list * term * term
 
 
@@ -57,12 +63,17 @@ type term =
                                           
 
 type binding =
+  (* only for parsing and printing *)
     NameBind 
   | TyVarBind
+  (* carrying assumption about variables *)
   | VarBind of ty
   | TmAbbBind of term * (ty option)
   | TyAbbBind of ty
 
+(* The `string` is only used for conversion between named and name-less
+forms of terms during parsing and printing. The evaluation can go ahead 
+without this information. *)
 type context = (string * binding) list
 
 type command =
@@ -76,22 +87,22 @@ let emptycontext = []
 
 let ctxlength ctx = List.length ctx
 
-let addbinding ctx x bind = (x,bind)::ctx
+let addbinding ctx x bind : context = (x,bind)::ctx
 
-let addname ctx x = addbinding ctx x NameBind
+let addname ctx x : context = addbinding ctx x NameBind
 
-let rec isnamebound ctx x =
+let rec isnamebound ctx (x: string) =
   match ctx with
       [] -> false
     | (y,_)::rest ->
         if y=x then true
         else isnamebound rest x
 
-let rec pickfreshname ctx x =
-  if isnamebound ctx x then pickfreshname ctx (x^"'")
+let rec pickfreshname ctx x : context * string =
+  if isnamebound ctx x then pickfreshname ctx (x ^ "'")
   else ((x,NameBind)::ctx), x
 
-let index2name fi ctx x =
+let index2name fi ctx (x: int) : string =
   try
     let (xn,_) = List.nth ctx x in
     xn
@@ -100,7 +111,7 @@ let index2name fi ctx x =
       Printf.sprintf "Variable lookup failure: offset: %d, ctx size: %d" in
     error fi (msg x (List.length ctx))
 
-let rec name2index fi ctx x =
+let rec name2index fi ctx (x: string) : int =
   match ctx with
       [] -> error fi ("Identifier " ^ x ^ " is unbound")
     | (y,_)::rest ->
@@ -110,7 +121,10 @@ let rec name2index fi ctx x =
 (* ---------------------------------------------------------------------- *)
 (* Shifting *)
 
-let tymap onvar c tyT = 
+let tymap (onvar: int -> int -> int -> ty) (* c var ctx.len*)
+          (c: int) 
+          (tyT: ty)
+          : ty = 
   let rec walk c tyT = match tyT with
     TyVar(x,n) -> onvar c x n
   | TyId(b) as tyT -> tyT
@@ -124,7 +138,11 @@ let tymap onvar c tyT =
   | TyVariant(fieldtys) -> TyVariant(List.map (fun (li,tyTi) -> (li, walk c tyTi)) fieldtys)
   in walk c tyT
 
-let tmmap onvar ontype c t = 
+let tmmap (onvar: info -> int -> int -> int -> term) (* info, c, var, ctx.len *)
+          (ontype: int -> ty -> ty) (* c, ty *)
+          (c: int) (* the variable being substituted *)
+          (t: term) 
+          : term = 
   let rec walk c t = match t with
     TmInert(fi,tyT) -> TmInert(fi,ontype c tyT)
   | TmVar(fi,x,n) -> onvar fi c x n
@@ -155,23 +173,24 @@ let tmmap onvar ontype c t =
                cases)
   in walk c t
 
-let typeShiftAbove d c tyT =
+(* if > c, += d *)
+let typeShiftAbove (d: int) (c: int) (tyT: ty) : ty =
   tymap
     (fun c x n -> if x>=c then TyVar(x+d,n+d) else TyVar(x,n+d))
     c tyT
 
-let termShiftAbove d c t =
+let termShiftAbove (d: int) (c: int) (t: term) : term =
   tmmap
     (fun fi c x n -> if x>=c then TmVar(fi,x+d,n+d) 
                      else TmVar(fi,x,n+d))
     (typeShiftAbove d)
     c t
 
-let termShift d t = termShiftAbove d 0 t
+let termShift (d: int) (t: term) = termShiftAbove d 0 t
 
-let typeShift d tyT = typeShiftAbove d 0 tyT
+let typeShift (d: int) (tyT: ty) = typeShiftAbove d 0 tyT
 
-let bindingshift d bind =
+let bindingshift (d: int) (bind: binding) =
   match bind with
     NameBind -> NameBind
   | TyVarBind -> TyVarBind
@@ -186,13 +205,16 @@ let bindingshift d bind =
 (* ---------------------------------------------------------------------- *)
 (* Substitution *)
 
-let termSubst j s t =
+(* [j -> s] t *)
+let termSubst (j: int) (s: term) (t: term) : term =
   tmmap
-    (fun fi j x n -> if x=j then termShift j s else TmVar(fi,x,n))
+    (* n is the length of the context *)
+    (fun fi j (x: int) (n: int) -> if x=j then termShift j s else TmVar(fi,x,n))
     (fun j tyT -> tyT)
     j t
 
-let termSubstTop s t = 
+(* (labmda. t) s *)
+let termSubstTop (s: term) (t: term) : term = 
   termShift (-1) (termSubst 0 (termShift 1 s) t)
 
 let typeSubst tyS j tyT =
