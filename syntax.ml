@@ -49,17 +49,17 @@ type term =
   | TmPLet of info * string list * term * term
 
 
-(* type pattern = *)
-(*   VarPattern of info * string *)
-(*   | RecordPattern of info * (string * pattern) list *)
+type pattern =
+    VarPattern of info * string
+  | RecordPattern of info * (string * pattern) list
 
-(* let get_vars_in_pattern pattern = *)
-(*   match pattern with *)
-(*     VarPattern(_, n) -> n::[] *)
-(*   | RecordPattern(_, fields) -> *)
-(*      List.flatten ( *)
-(*          List.iter (fun (_,p) in get_vars_in_pattern p) fields *)
-(*        ) *)
+let rec get_vars_in_pattern pattern : string list =
+  match pattern with
+    VarPattern(_, n) -> [n]
+  | RecordPattern(_, fields) ->
+     List.flatten (
+         List.map (fun (_,p) -> get_vars_in_pattern p) fields
+       )
                                           
 
 type binding =

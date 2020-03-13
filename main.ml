@@ -39,7 +39,8 @@ let openfile infile =
             with Sys_error m -> trynext rest
   in trynext !searchpath
 
-let parseFile inFile =
+let parseFile (inFile: string) 
+  : context -> command list * context =
   let pi = openfile inFile
   in let lexbuf = Lexer.create inFile pi
   in let result =
@@ -87,9 +88,9 @@ let rec process_command ctx cmd = match cmd with
       pr x; pr " "; prbindingty ctx bind'; force_newline();
       addbinding ctx x bind'
   
-let process_file f ctx =
+let process_file (f: string) ctx =
   alreadyImported := f :: !alreadyImported;
-  let cmds,_ = parseFile f ctx in
+  let (cmds: command list), _ = parseFile f ctx in
   let g ctx (c: command) =  
     open_hvbox 0;
     let results = process_command ctx c in

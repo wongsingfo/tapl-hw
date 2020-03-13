@@ -119,6 +119,7 @@ let rec eval1 ctx t : term = match t with
       raise NoRuleApplies
 
 let rec eval ctx t : term =
+  (* printtm ctx t; print_flush(); pr "\n"; *)
   try let t' = eval1 ctx t
       in eval ctx t'
   with NoRuleApplies -> t
@@ -149,7 +150,7 @@ let rec simplifyty ctx tyT =
     simplifyty ctx tyT' 
   with NoRuleApplies -> tyT
 
-let rec tyeqv ctx tyS tyT =
+let rec tyeqv ctx tyS tyT : bool =
   let tyS = simplifyty ctx tyS in
   let tyT = simplifyty ctx tyT in
   match (tyS,tyT) with
