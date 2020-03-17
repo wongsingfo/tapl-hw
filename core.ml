@@ -57,6 +57,22 @@ let rec eval1 ctx t : term = match t with
   | TmLet(fi,x,t1,t2) ->
       let t1' = eval1 ctx t1 in
       TmLet(fi, x, t1', t2) 
+  (* pattern matching *)
+  | TmPLet(fi, (p: string list), 
+                t1, 
+                t2) ->  
+      (try let t1' = eval1 ctx t1 in
+          TmPLet(fi, p, t1', t2)
+       with NoRuleApplies -> 
+          match p with 
+            [] -> t2
+          | _::rest2 ->
+            (match t1 with 
+                TmRecord(fi2, (_, x1)::rest1) -> 
+                  TmPLet(fi, rest2, TmRecord(fi2, rest1), termSubstTop x1 t2)
+              | _ -> raise NoRuleApplies
+            )
+      )
   | TmFix(fi,v1) as t when isval ctx v1 ->
       (match v1 with
          TmAbs(_,_,_,t12) -> termSubstTop t t12
@@ -254,6 +270,7 @@ let rec typeof ctx t : ty =
      let tyT1 = typeof ctx t1 in
      let ctx' = addbinding ctx x (VarBind(tyT1)) in         
      typeShift (-1) (typeof ctx' t2)
+  | TmPLet(fi, p, t1, t2) -> TyBool
   | TmFix(fi, t1) ->
       let tyT1 = typeof ctx t1 in
       (match simplifyty ctx tyT1 with

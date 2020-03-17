@@ -234,7 +234,7 @@ Term :
           TmLet($1, $2.v, TmFix($1, TmAbs($1, $2.v, $4 ctx, $6 ctx1)),
                 $8 ctx1) }
   | LET Pattern EQ Term IN Term
-      { fun ctx -> TmPLet($1, $2, $4 ctx, $6 (List.fold_left (fun x y -> addname x y) ctx $2)) }
+      { fun ctx -> TmPLet($1, $2, $4 ctx, $6 (List.fold_right (fun x y -> addname y x) $2 ctx)) }
 
 Pattern :
     LCURLY MetaVars RCURLY
