@@ -270,7 +270,21 @@ let rec typeof ctx t : ty =
      let tyT1 = typeof ctx t1 in
      let ctx' = addbinding ctx x (VarBind(tyT1)) in         
      typeShift (-1) (typeof ctx' t2)
-  | TmPLet(fi, p, t1, t2) -> TyBool
+  | TmPLet(fi, p, t1, t2) -> 
+     (match typeof ctx t1 with 
+     TyRecord(tyT1) ->
+       let rec fold = fun (x: string list) (t: (string * ty) list) ctx ->
+        (match x with 
+            [] -> ctx
+          | x1::xs -> 
+            (match t with 
+              | (_, t1)::ts ->
+                let ctx' = addbinding ctx x1 (VarBind(t1)) in
+                   fold xs ts ctx'
+              | _ -> error fi "number of arguments mismatch")) in
+        let ctx' = fold (List.rev p) (List.rev tyT1) ctx in 
+        typeShift (- (List.length p)) (typeof ctx' t2)
+      | _ -> error fi "expect TyRecord")
   | TmFix(fi, t1) ->
       let tyT1 = typeof ctx t1 in
       (match simplifyty ctx tyT1 with
