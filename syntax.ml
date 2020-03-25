@@ -7,6 +7,7 @@ open Support.Pervasive
 
 type ty =
     TyVar of int * int
+  (* A undefined type but with a name *)
   | TyId of string
   (* function: ty -> ty *)
   | TyArr of ty * ty
@@ -23,6 +24,7 @@ type term =
   | TmFalse of info
   | TmIf of info * term * term * term
   | TmCase of info * term * (string * (string * term)) list
+  (* < string = term > as ty *)
   | TmTag of info * string * term * ty
   (* The second `int` is the total length of the context in which the 
   variable occurs. It is only for consistency check. *)
@@ -65,10 +67,13 @@ let rec get_vars_in_pattern pattern : string list =
 type binding =
   (* only for parsing and printing *)
     NameBind 
+  (* declare a Type *)
   | TyVarBind
-  (* carrying assumption about variables *)
+  (* var : ty -- carrying assumption about variables *)
   | VarBind of ty
+  (* var : ty = term *)
   | TmAbbBind of term * (ty option)
+  (* Type = ty *)
   | TyAbbBind of ty
 
 (* The `string` is only used for conversion between named and name-less

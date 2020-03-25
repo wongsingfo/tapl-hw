@@ -82,7 +82,7 @@ let rec process_command ctx cmd = match cmd with
       printty ctx tyT;
       force_newline();
       ctx
-  | Bind(fi, (x: string), bind) -> 
+  | Bind(fi, (x: string), (bind: binding)) -> 
       let bind = checkbinding fi ctx bind in
       let bind' = evalbinding ctx bind in
       pr x; pr " "; prbindingty ctx bind'; force_newline();
