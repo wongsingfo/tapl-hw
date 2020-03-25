@@ -154,7 +154,7 @@ let tmmap (onvar: info -> int -> int -> int -> term) (* info, c, var, ctx.len *)
   | TmAbs(fi,x,tyT1,t2) -> TmAbs(fi,x,ontype c tyT1,walk (c+1) t2)
   | TmApp(fi,t1,t2) -> TmApp(fi,walk c t1,walk c t2)
   | TmLet(fi,x,t1,t2) -> TmLet(fi,x,walk c t1,walk (c+1) t2)
-  | TmPLet(fi,x,t1,t2) -> TmPLet(fi,x,walk c t1,walk (c+1) t2)
+  | TmPLet(fi,x,t1,t2) -> TmPLet(fi,x,walk c t1,walk (c+(List.length x)) t2)
   | TmFix(fi,t1) -> TmFix(fi,walk c t1)
   | TmTrue(fi) as t -> t
   | TmFalse(fi) as t -> t
